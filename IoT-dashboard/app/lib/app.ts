@@ -3,13 +3,22 @@ import { config } from './config';
 import Controller from "./interfaces/controller.interface";
 import bodyParser from "body-parser";
 import mongoose from "mongoose";
+import http from "http";
+import { Server, Socket } from "socket.io";
+import cors from "cors";
+
 
 class App {
     public app: express.Application;
+    private server: http.Server;
+    public io: Server;
+
 
     constructor(controllers: Controller[]) {
         this.app = express();
-        this.initializeMiddlewares()
+        this.server = http.createServer(this.app);
+        this.initializeMiddlewares();
+        this.initializeSocket();
         this.initializeControllers(controllers);
         this.connectToDatabase();
     }
@@ -64,6 +73,43 @@ class App {
         this.app.listen(config.port, () => {
             console.log(`App listening on the port ${config.port}`);
         });
+    }
+
+    private initializeSocket(): void {
+        this.io = new Server(this.server, {
+            cors: {
+                origin: "http://localhost:5173",
+                methods: ["GET", "POST"],
+                allowedHeaders: ["Authorization"],
+                credentials: true
+            },
+        });
+
+
+        this.io.on("connection", (socket: Socket) => {
+            console.log(`Nowe połączenie: ${socket.id}`);
+
+
+            socket.on("message", (data: string) => {
+                console.log(`Wiadomość od ${socket.id}: ${data}`);
+                this.io.emit("message", data);
+            });
+
+
+            socket.on("disconnect", () => {
+                console.log(`Rozłączono: ${socket.id}`);
+            });
+        });
+
+
+        this.server.listen(config.socketPort, () => {
+            console.log(`WebSocket listening on port ${config.socketPort}`);
+        });
+    }
+
+
+    public getIo(): Server {
+        return this.io;
     }
 }
 export default App;
