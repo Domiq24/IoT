@@ -3,8 +3,8 @@ import {Request, Response, NextFunction, Router} from 'express';
 import path from 'path';
 import { Server } from 'socket.io';
 
-class IndexController implements Controller {
-    public path = '/*';
+class MeasurementController implements Controller {
+    public path = '/measurement';
     public router = Router();
     public io: Server;
 
@@ -14,19 +14,21 @@ class IndexController implements Controller {
     }
 
     private initializeRoutes() {
-        this.router.get(this.path, this.serveIndex);
-        this.router.get(this.path + 'emit', this.emitReading);
+        this.router.post(this.path, this.emitMeasurement);
     }
 
     private serveIndex = async (request: Request, response: Response) => {
         response.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
     }
 
-    private emitReading = async (request: Request, response: Response, next: NextFunction) => {
+    private emitMeasurement = async (request: Request, response: Response, next: NextFunction) => {
         try {
-            this.io.emit("message", 'nowy pomiar');
+            this.io.emit("sensor-data", /*{
+                temperature: request.body.temperature,
+                humidity: request.body.humidity,
+                pressure: request.body.pressure
+            }*/request.body);
             response.status(200).json({ res: "ok" });
-
         } catch (error) {
             console.error("Błąd podczas emisji danych:", error);
             response.status(500).json({ error: "Błąd serwera" });
@@ -34,4 +36,4 @@ class IndexController implements Controller {
     };
 }
 
-export default IndexController;
+export default MeasurementController;

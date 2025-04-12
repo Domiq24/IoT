@@ -95,6 +95,11 @@ class App {
                 this.io.emit("message", data);
             });
 
+            setInterval(() => this.io.emit("sensor-data", {
+                temperature: 24.5,
+                humidity: 55,
+                pressure: 1005
+            }), 2000);
 
             socket.on("disconnect", () => {
                 console.log(`Rozłączono: ${socket.id}`);

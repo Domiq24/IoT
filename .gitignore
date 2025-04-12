@@ -1,2 +1,4 @@
 /.idea/
 /IoT-dashboard/app/node_modules/
+/IoT-dashboard/client/node_modules/
+/IoT-dashboard/mongo_url.txt
