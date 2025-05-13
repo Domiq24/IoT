@@ -26,19 +26,19 @@ class DataController implements Controller {
 
     private getData = async (request: Request, response: Response) => {
         const { id } = request.params;
-        response.status(200).json(Math.max(...testArr));
+        response.status(200).json(testArr[Number.parseInt(id)]);
     }
 
     private getLatestById = async (request: Request, response: Response) => {
         const { id } = request.params;
-        response.status(200).json(testArr);
+        response.status(200).json(Math.max(...testArr));
     }
 
     private getDataRange = async (request: Request, response: Response) => {
         const { id } = request.params;
         const { num } = request.params;
 
-        response.status(200).json(testArr.slice(id, id+num+1));
+        response.status(200).json(testArr.slice(Number.parseInt(id), Number.parseInt(id)+Number.parseInt(num)));
     }
 
     private addData = async (request: Request, response: Response) => {
@@ -52,11 +52,13 @@ class DataController implements Controller {
 
     private deleteAll = async (request: Request, response: Response) => {
         testArr = [];
+        response.status(200).json(testArr);
     }
 
     private deleteById = async (request: Request, response: Response) => {
         const { id } = request.params;
-        testArr.splice(id, 1);
+        testArr.splice(Number.parseInt(id), 1);
+        response.status(200).json(testArr);
     }
 }
 
