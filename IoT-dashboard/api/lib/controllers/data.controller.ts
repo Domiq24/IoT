@@ -8,7 +8,7 @@ let testArr = [4,5,6,3,5,3,7,5,13,5,6,4,3,6,3,6];
 class DataController implements Controller {
     public path = '/api/data';
     public router = Router();
-    private dataService: DataService;
+    private dataService: DataService = new DataService();
 
     constructor() {
         this.initializeRoutes();
@@ -38,7 +38,7 @@ class DataController implements Controller {
             pressure: air[1].value,
             humidity: air[2].value,
             deviceId: parseInt(id),
-            readingDate : new Date
+            readingDate : new Date()
         }
 
         try {
@@ -60,19 +60,18 @@ class DataController implements Controller {
         const { id } = request.params;
         const { num } = request.params;
 
-        if(num.length) {
+        const data: any[] = [];
+        if(num !== undefined) {
             const firstId = parseInt(id);
             const lastId = parseInt(num);
-            const data = [];
 
-            for(let i = firstId; i < lastId; i++) {
-                data.push(await this.dataService.get(i.toString()));
+            for(let i = firstId; i <= lastId; i++) {
+                const result = await this.dataService.get(i.toString());
+                if(result.length) data.push(result[0]);
             }
-            response.status(200).json(data);
-        } else {
-            const data = await this.dataService.get(id);
-            response.status(200).json(data);
+
         }
+        response.status(200).json(data);
     }
 
     private cleanAllDevices = async (request: Request, response: Response) => {

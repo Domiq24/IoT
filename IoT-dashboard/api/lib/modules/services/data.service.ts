@@ -35,7 +35,7 @@ export default class DataService {
     }
 
     public async getAll() {
-        const latestData = [];
+        const latestData: any[] = [];
         try {
             await Promise.all(
                 Array.from({length: config.supportedDevicesNum}, async (_, i) => {
@@ -47,18 +47,19 @@ export default class DataService {
                     }
                 })
             );
+            return latestData;
         } catch (error) {
             console.error('Wystąpił błąd podczas pobierania danych z urządzenia ${i + 1}:', error);
             latestData.push({});
         }
-        return latestData;
     }
 
     public async deleteMany(deviceID: string) {
         try {
             await DataModel.deleteMany({deviceId: deviceID}, {__v: 0, _id: 0});
         } catch (error) {
-            
+            console.error('Wystąpił błąd podczas usuwania danych z urządzenia ${deviceId + 1}:', error);
+            throw new Error('Wystąpił błąd podczas usuwania danych z urządzenia ${deviceId + 1}');
         }
     }
 }
