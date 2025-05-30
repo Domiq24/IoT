@@ -13,10 +13,9 @@ class PasswordService {
 
    public async authorize(userId: string, password: string) {
        try {
-           const result = await PasswordModel.findOne({ userId: userId, password: password });
-           if (result) {
-               return true;
-           }
+           const result = await PasswordModel.findOne({ userId: userId });
+           if(!result) return false;
+           return bcrypt.compare(password, result.password);
        } catch (error) {
            console.error('Wystąpił błąd podczas tworzenia danych:', error);
            throw new Error('Wystąpił błąd podczas tworzenia danych');
