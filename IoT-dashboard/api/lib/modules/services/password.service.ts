@@ -2,13 +2,20 @@ import PasswordModel  from '../schemas/password.schema';
 import bcrypt from 'bcrypt';
 
 class PasswordService {
-   public async createOrUpdate(data: any) {
-       const result = await PasswordModel.findOneAndUpdate({ userId: data.userId }, { $set: { password: data.password } }, { new: true });
-       if (!result) {
-           const dataModel = new PasswordModel({ userId: data.userId, password: data.password });
-           return await dataModel.save();
+    async createOrUpdate({ userId, password }: { userId: string; password: string }): Promise<void> {
+       try {
+           const existing = await PasswordModel.findOne({ userId });
+
+           if (existing) {
+               existing.password = password;
+               await existing.save();
+           } else {
+               await PasswordModel.create({ userId, password });
+           }
+       } catch (error) {
+           console.error(`CreateOrUpdate Password Error: ${error.message}`);
+            throw new Error('Failed to save password');
        }
-       return result;
    }
 
    public async authorize(userId: string, password: string) {
@@ -17,8 +24,8 @@ class PasswordService {
            if(!result) return false;
            return bcrypt.compare(password, result.password);
        } catch (error) {
-           console.error('Wystąpił błąd podczas tworzenia danych:', error);
-           throw new Error('Wystąpił błąd podczas tworzenia danych');
+           console.error(`Authorize Error: ${error.message}`);
+           return false;
        }
 
    }

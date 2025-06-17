@@ -6,6 +6,11 @@ import UserService from "../modules/services/user.service";
 import PasswordService from "../modules/services/password.service";
 import TokenService from "../modules/services/token.service";
 import NodeMailer from "nodemailer";
+import cors from "cors";
+
+const options = {
+    origin: ['http://localhost:3100', 'http://localhost:5173']
+}
 
 class UserController implements Controller {
    public path = '/api/user';
@@ -16,7 +21,8 @@ class UserController implements Controller {
    }
 
    private initializeRoutes() {
-       this.router.post(`${this.path}/create`, admin, this.createNewOrUpdate);
+       this.router.use(cors<Request>(options));
+       this.router.post(`${this.path}/create`, this.createNewOrUpdate);
        this.router.post(`${this.path}/auth`, this.authenticate);
        this.router.post(`${this.path}/reset_password`, this.resetPassword);
        this.router.delete(`${this.path}/logout/:userId`, auth, this.removeHashSession);
@@ -27,10 +33,10 @@ class UserController implements Controller {
 
        try {
            const user = await this.userService.getByEmailOrName(login);
-           if (!user) response.status(401).json({error: 'Unauthorized'});
+           if (!user) return response.status(401).json({error: 'Unauthorized'});
 
-           const result = await this.passwordService.authorize(user.id, await this.passwordService.hashPassword(password));
-           if(!result) response.status(401).json({error: 'Unauthorized'});
+           const result = await this.passwordService.authorize(user.id, password);
+           if(!result) return response.status(401).json({error: 'Unauthorized'});
 
            const token = await this.tokenService.create(user);
            response.status(200).json(this.tokenService.getToken(token));
@@ -72,15 +78,12 @@ class UserController implements Controller {
     };
 
     private resetPassword = async (request: Request, response: Response, next: NextFunction) => {
-        const userData = request.body;
+        const { login } = request.body;
 
         try {
-            const user = await this.userService.getByEmailOrName(userData.login);
-            if(!user) {
-                response.status(401).json({error: 'Unauthorized'});
-            }
-            const auth = await this.passwordService.authorize(user.id, userData.password);
-            if(!auth) response.status(401).json({error: 'Unauthorized'});
+            const user = await this.userService.getByEmailOrName(login);
+            if(!user) return response.status(401).json({error: 'User not found'});
+
             const transporter = NodeMailer.createTransport({
                 service: "Gmail",
                 host: "smtp.gmail.com",
@@ -93,8 +96,9 @@ class UserController implements Controller {
             });
 
             let rand_str = "";
-            for (let i = 0; i < 8; i++) {
-                rand_str += Math.random() % 10;
+            const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            for (let i = 0; i < 12; i++) {
+                rand_str += characters.charAt(Math.floor(Math.random() * characters.length));
             }
             const password = rand_str;
             const mailOptions = {
@@ -103,8 +107,15 @@ class UserController implements Controller {
                 subject: "Password Reset",
                 text: `Your new password: ${password}`,
             }
+
+            const hashedPassword = await this.passwordService.hashPassword(password)
+            await this.passwordService.createOrUpdate({
+                   userId: user._id,
+                   password: hashedPassword
+            });
+
             const result = await transporter.sendMail(mailOptions);
-            if(!result) response.status(401).json({error: 'Email error'});
+            if(!result) return response.status(401).json({error: 'Email error'});
             response.status(200).json(true);
         } catch(error) {
             console.error(`Validation Error: ${error.message}`);

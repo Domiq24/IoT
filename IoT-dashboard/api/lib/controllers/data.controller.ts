@@ -4,8 +4,14 @@ import { checkIdParam } from "../middlewares/deviceIdParam.middleware";
 import DataService from "../modules/services/data.service";
 import { IData } from "../modules/models/data.model";
 import { config } from "../config";
+import { auth } from "../middlewares/auth.middleware";
 import { admin } from "../middlewares/admin.middleware";
 import Joi from "joi";
+import cors from "cors";
+
+const options = {
+    origin: ['http://localhost:3100', 'http://localhost:5173']
+}
 
 class DataController implements Controller {
     public path = '/api/data';
@@ -16,17 +22,29 @@ class DataController implements Controller {
     }
 
     private initializeRoutes() {
-        this.router.get(`${this.path}/latest`, this.getLatestReadingsFromAllDevices);
-        this.router.post(`${this.path}/:id`, admin, checkIdParam, this.addData);
-        this.router.get(`${this.path}/:id`, checkIdParam, this.getAllDeviceData);
-        this.router.get(`${this.path}/:id/latest`, checkIdParam, this.getPeriodData);
-        this.router.get(`${this.path}/:id/:num`, checkIdParam, this.getPeriodData)
+        this.router.use(cors<Request>(options));
+        this.router.get(`${this.path}/all`, auth, this.getReadingsFromAllDevices);
+        this.router.get(`${this.path}/latest`, auth, this.getLatestReadingsFromAllDevices);
+        this.router.post(`${this.path}/:id`, checkIdParam, this.addData);
+        this.router.get(`${this.path}/:id`, auth, checkIdParam, this.getAllDeviceData);
+        this.router.get(`${this.path}/:id/latest`, auth, checkIdParam, this.getPeriodData);
+        this.router.get(`${this.path}/:id/:num`, auth, checkIdParam, this.getPeriodData)
         this.router.delete(`${this.path}/all`, admin, this.cleanAllDevices);
         this.router.delete(`${this.path}/:id`, admin, checkIdParam, this.cleanDeviceData);
+        this.router.delete(`${this.path}/:id/:from/:to`, admin, this.deleteFromDeviceInTimeSpan)
+    }
+
+    private getReadingsFromAllDevices = async (request: Request, response: Response) => {
+        const allData = await this.dataService.getAll();
+        function compareId (a: IData, b: IData) {return a.deviceId - b.deviceId;}
+        allData.sort(compareId);
+        response.status(200).json(allData);
     }
 
     private getLatestReadingsFromAllDevices = async (request: Request, response: Response) => {
-        const allData = await this.dataService.getAll();
+        const allData = await this.dataService.getAllLatest();
+        function compareId (a: IData, b: IData) {return a.deviceId - b.deviceId;}
+        allData.sort(compareId);
         response.status(200).json(allData);
     }
 
@@ -70,21 +88,15 @@ class DataController implements Controller {
     }
 
     private getPeriodData = async (request: Request, response: Response) => {
-        const { id } = request.params;
-        const { num } = request.params;
+        const { id, num } = request.params;
 
-        const data: any[] = [];
         if(num !== undefined) {
-            const firstId = parseInt(id);
-            const lastId = parseInt(num);
-
-            for(let i = firstId; i <= lastId; i++) {
-                const result = await this.dataService.get(i.toString());
-                if(result.length) data.push(result[0]);
-            }
-
+            const data = await this.dataService.getMany(id, parseInt(num));
+            response.status(200).json(data);
+        } else {
+            const data = await this.dataService.get(id);
+            response.status(200).json(data);
         }
-        response.status(200).json(data);
     }
 
     private cleanAllDevices = async (request: Request, response: Response) => {
@@ -99,6 +111,11 @@ class DataController implements Controller {
     private cleanDeviceData = async (request: Request, response: Response) => {
         const { id } = request.params;
         await this.dataService.deleteMany(id);
+    }
+
+    private deleteFromDeviceInTimeSpan = async (request: Request, response: Response) => {
+        const { id, from, to } = request.params;
+        await this.dataService.deleteInSpan(id, new Date(from), new Date(to));
     }
 }
 

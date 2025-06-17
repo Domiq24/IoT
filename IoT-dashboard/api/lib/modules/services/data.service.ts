@@ -34,7 +34,27 @@ export default class DataService {
         }
     }
 
+    public async getMany(deviceID: string, num: number) {
+        try {
+            const data = await DataModel.find({deviceId: deviceID}, {__v: 0, _id: 0}).limit(num).sort({$natural: -1});
+            return data;
+        } catch (error) {
+            console.error('Wystąpił błąd podczas pobierania danych:', error);
+            throw new Error('Wystąpił błąd podczas pobierania danych');
+        }
+    }
+
     public async getAll() {
+        try {
+            const allData = await DataModel.find({}, {__v: 0, _id: 0});
+            return allData;
+        } catch(error) {
+            console.error("Wystąpił błąd podczas pobierania danych", error);
+            throw new Error("Wystąpił błąd podczas pobierania danych");
+        }
+    }
+
+    public async getAllLatest() {
         const latestData: any[] = [];
         try {
             await Promise.all(
@@ -49,7 +69,7 @@ export default class DataService {
             );
             return latestData;
         } catch (error) {
-            console.error('Wystąpił błąd podczas pobierania danych z urządzenia ${i + 1}:', error);
+            console.error(`Wystąpił błąd podczas pobierania danych z urządzenia:`, error);
             latestData.push({});
         }
     }
@@ -58,8 +78,17 @@ export default class DataService {
         try {
             await DataModel.deleteMany({deviceId: deviceID}, {__v: 0, _id: 0});
         } catch (error) {
-            console.error('Wystąpił błąd podczas usuwania danych z urządzenia ${deviceId + 1}:', error);
-            throw new Error('Wystąpił błąd podczas usuwania danych z urządzenia ${deviceId + 1}');
+            console.error(`Wystąpił błąd podczas usuwania danych z urządzenia ${deviceID + 1}:`, error);
+            throw new Error(`Wystąpił błąd podczas usuwania danych z urządzenia ${deviceID + 1}`);
+        }
+    }
+
+    public async deleteInSpan(deviceID: string, from: Date, to: Date) {
+        try {
+            await DataModel.deleteMany({deviceId: deviceID, readingDate: {$in: [from, to]}}, {__v: 0, _id: 0});
+        } catch(error) {
+            console.error(`Wystąpił błąd przy usówaniu wpisów z urządzenia ${deviceID + 1}:` )
+            throw new Error(`Wystąpił błąd podczas usuwania danych z urządzenia ${deviceID + 1}`);
         }
     }
 }
